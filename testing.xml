@@ -1,0 +1,68 @@
+<nta>
+  <declaration>bool SCADA_Q2C_Sync_Activated;
+chan send_msg;
+int VSD1_Command_Word2;
+bool SCADA_Q2C_Close;
+chan recv_msg;
+bool Q2C_In_Sync;
+</declaration>
+  <template>
+    <name x="" y="">SPLC</name>
+    <location id="id2">
+      <name x="" y="">id2</name>
+    </location>
+    <location id="id3">
+      <name x="" y="">id3</name>
+    </location>
+    <location id="id1">
+      <name x="" y="">id1</name>
+    </location>
+    <location id="id0">
+      <name x="" y="">id0</name>
+    </location>
+    <init ref="id0"/>
+    <transition>
+      <source ref="id0"/>
+      <target ref="id1"/>
+      <label kind="guard" x="" y=""></label>
+      <label kind="synchronisation" x="" y="">recv_msg?</label>
+      <label kind="assignment" x="" y="">SCADA_Q2C_Sync_Activated=GGIO17$CO$SPCSO2$Oper</label>
+    </transition>
+    <transition>
+      <source ref="id0"/>
+      <target ref="id1"/>
+      <label kind="guard" x="" y=""></label>
+      <label kind="synchronisation" x="" y="">recv_msg?</label>
+      <label kind="assignment" x="" y="">Q2C_In_Sync=MIED2_V16GGIO1$ST$Ind3$stVal</label>
+    </transition>
+    <transition>
+      <source ref="id0"/>
+      <target ref="id1"/>
+      <label kind="guard" x="" y=""></label>
+      <label kind="synchronisation" x="" y="">recv_msg?</label>
+      <label kind="assignment" x="" y="">SCADA_Q2C_Close=GGIO17$CO$SPCSO9$Oper</label>
+    </transition>
+    <transition>
+      <source ref="id1"/>
+      <target ref="id2"/>
+      <label kind="guard" x="" y="">SCADA_Q2C_Sync_Activated==true</label>
+      <label kind="synchronisation" x="" y=""> send_msg!</label>
+      <label kind="assignment" x="" y="">VSD1_Command_Word2=16#1D4E</label>
+    </transition>
+    <transition>
+      <source ref="id1"/>
+      <target ref="id3"/>
+      <label kind="guard" x="" y="">Q2C_In_Sync==true</label>
+      <label kind="synchronisation" x="" y=""> send_msg!</label>
+      <label kind="assignment" x="" y="">VSD1_Command_Word2=16#1D4C</label>
+    </transition>
+    <transition>
+      <source ref="id1"/>
+      <target ref="id3"/>
+      <label kind="guard" x="" y="">SCADA_Q2C_Close==true</label>
+      <label kind="synchronisation" x="" y=""> send_msg!</label>
+      <label kind="assignment" x="" y="">VSD1_Command_Word2=16#1D4C</label>
+    </transition>
+  </template>
+  <system>Process=SPLC(); system Process;</system>
+</nta>
