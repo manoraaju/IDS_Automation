@@ -1,0 +1,189 @@
+global SCADA_Q2C_Sync_Activated;
+global Q2C_In_Sync;
+global SCADA_Q2C_Close;
+global precond_1;
+global timer_enable_MODBUS1;
+global precond_2;
+global timer_enable_MODBUS2;
+global precond_3;
+global timer_enable_MODBUS3;
+global VSD1_Command2_old;
+
+event MMS_write_request(c: connection, itemId: string, value: bool)
+{
+	if (itemId == GGIO17$CO$SPCSO2$Oper)
+	{
+		if (c$id$orig_h == 172.18.5.60 && c$id$orig_d == 172.16.4.41)
+		{
+			SCADA_Q2C_Sync_Activated = value;
+			update_precond();
+		}
+		else
+		{
+			Raise alarm;
+		}
+	}           
+	
+	if (itemId == MIED2_V16GGIO1$ST$Ind3$stVal)
+	{
+		if (c$id$orig_h == 172.18.5.60 && c$id$orig_d == 172.16.4.41)
+		{
+			Q2C_In_Sync = value;
+			update_precond();
+		}
+		else
+		{
+			Raise alarm;
+		}
+	}           
+	
+	if (itemId == GGIO17$CO$SPCSO9$Oper)
+	{
+		if (c$id$orig_h == 172.18.5.60 && c$id$orig_d == 172.16.4.41)
+		{
+			SCADA_Q2C_Close = value;
+			update_precond();
+		}
+		else
+		{
+			Raise alarm;
+		}
+	}           
+	
+}
+
+
+event MMS_read_request(c: connection, itemId: string, value: bool)
+{
+    if (itemId == GGIO17$CO$SPCSO2$Oper)
+    {
+        if (c$id$orig_h == 172.18.5.60 && c$id$orig_d == 172.16.4.41)
+        {
+            SCADA_Q2C_Sync_Activated = value;
+            update_precond();
+        }
+        else
+        {
+            Raise alarm;
+        }
+    }           
+    
+    if (itemId == MIED2_V16GGIO1$ST$Ind3$stVal)
+    {
+        if (c$id$orig_h == 172.18.5.60 && c$id$orig_d == 172.16.4.41)
+        {
+            Q2C_In_Sync = value;
+            update_precond();
+        }
+        else
+        {
+            Raise alarm;
+        }
+    }           
+    
+    if (itemId == GGIO17$CO$SPCSO9$Oper)
+    {
+        if (c$id$orig_h == 172.18.5.60 && c$id$orig_d == 172.16.4.41)
+        {
+            SCADA_Q2C_Close = value;
+            update_precond();
+        }
+        else
+        {
+            Raise alarm;
+        }
+    }           
+    
+}
+
+function update_precond()
+{
+    if (SCADA_Q2C_Sync_Activated==true)
+        {
+            precond_1 = SCADA_Q2C_Sync_Activated;
+            if (!timer_enable_MODBUS1)
+            {
+                schedule timer_period_MODBUS{timer_finish_MODBUS1()};
+                timer_enable_MODBUS1=true;
+            }
+        }
+    
+    if (Q2C_In_Sync==true)
+        {
+            precond_2 = Q2C_In_Sync;
+            if (!timer_enable_MODBUS1)
+            {
+                schedule timer_period_MODBUS{timer_finish_MODBUS2()};
+                timer_enable_MODBUS2=true;
+            }
+        }
+    
+    if (SCADA_Q2C_Close==true)
+        {
+            precond_3 = SCADA_Q2C_Close;
+            if (!timer_enable_MODBUS1)
+            {
+                schedule timer_period_MODBUS{timer_finish_MODBUS3()};
+                timer_enable_MODBUS3=true;
+            }
+        }
+    
+}
+
+function process_MODBUS()
+{
+    if precond_1{
+        timer_enable_MODBUS1 = false;
+        VSD1_Command2_old = VSD1_Command2;
+        if VSD1_Command_Word2==16#1D4E {
+            break;
+        }
+        raise alarm;
+    }
+    
+    if precond_2{
+        timer_enable_MODBUS2 = false;
+        VSD1_Command2_old = VSD1_Command2;
+        if VSD1_Command_Word2==16#1D4C {
+            break;
+        }
+        raise alarm;
+    }
+    
+    if precond_3{
+        timer_enable_MODBUS3 = false;
+        VSD1_Command2_old = VSD1_Command2;
+        if VSD1_Command_Word2==16#1D4C {
+            break;
+        }
+        raise alarm;
+    }
+    
+}
+
+
+event timer_finish_MODBUS1()
+{
+    if (timer_enable_MODBUS1)
+    {
+        raise Deletion/Delay alarm;
+    }
+}
+
+
+event timer_finish_MODBUS2()
+{
+    if (timer_enable_MODBUS2)
+    {
+        raise Deletion/Delay alarm;
+    }
+}
+
+
+event timer_finish_MODBUS3()
+{
+    if (timer_enable_MODBUS3)
+    {
+        raise Deletion/Delay alarm;
+    }
+}

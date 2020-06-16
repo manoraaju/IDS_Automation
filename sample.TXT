@@ -1,0 +1,11 @@
+	if (itemId == "GGIO17$CO$SPCSO2$Oper") 
+	{
+		if (c$id$orig_h == "172.18.5.60" && c$id$orig_d == "172.16.4.41")
+		{
+			SCADA_Q2C_Sync_Activated = value;
+			update_precond();
+		}
+		else{
+			Raise alarm;
+		}	
+	}
