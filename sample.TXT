@@ -9,3 +9,18 @@
 			Raise alarm;
 		}	
 	}
+
+	event MMS_write_request(c: connection, itemId: string, value: bool)
+{
+	if (itemId == "GGIO17$CO$SPCSO2$Oper")
+
+	{
+		if (c$id$orig_h == 172.18.5.60)
+		{
+			SCADA_Q2C_Sync_Activated = value;
+			if (SCADA_Q2C_Sync_Activated==T)
+			{
+				schedule timer_period_MODBUS1 {timer_finish_MODBUS1()};
+			}
+		}
+	}

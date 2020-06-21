@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>bool SCADA_Q2C_Sync_Activated;
+chan send_msg;
+int VSD1_Command_Word2;
+bool SCADA_Q2C_Close;
+chan recv_msg;
+int T2;
+int Total_W;
+bool Q2C_In_Sync;
+</declaration><template><name x="5" y="5">Template</name><location id="id0" x="544" y="168"></location><location id="id1" x="120" y="208"></location><location id="id2" x="408" y="-40"></location><location id="id3" x="456" y="-208"></location><location id="id4" x="56" y="-40"></location><location id="id5" x="-240" y="-40"></location><init ref="id5"/><transition><source ref="id2"/><target ref="id0"/><label kind="guard" x="504" y="18">Parallel_Oper and GEN2_TW&lt;T2</label><label kind="synchronisation" x="504" y="33">Send_msg!</label><label kind="assignment" x="504" y="48">VSD2_Command2= 16#1D4D;
+VSD1_Command2= 16#1D4C;</label></transition><transition><source ref="id2"/><target ref="id1"/><label kind="guard" x="200" y="128">Parallel_Oper and GEN1_TW&lt;T2</label><label kind="synchronisation" x="200" y="144">Send_msg!</label><label kind="assignment" x="200" y="160">VSD1_Command2= 16#1D4D;
+VSD2_Command2= 16#1D4C;</label></transition><transition><source ref="id3"/><target ref="id2"/><label kind="guard" x="408" y="-160">Q2B_Open_Close=2#01 AND Q2C_Open_Close=2#01</label><label kind="assignment" x="412" y="-146">Parallel_Oper=1</label></transition><transition><source ref="id4"/><target ref="id3"/><label kind="assignment" x="64" y="-120">Total_W = (GEN1_TW + GEN2_TW);
+T2 = (Total_W)/2;</label></transition><transition><source ref="id5"/><target ref="id4"/><label kind="synchronisation" x="-96" y="-8">received_msg?</label><label kind="assignment" x="-144" y="16">Q2C_Open_Close = GGIO12345</label><nail x="-120" y="16"/><nail x="24" y="16"/></transition><transition><source ref="id5"/><target ref="id4"/><label kind="synchronisation" x="-104" y="64">received_msg?</label><label kind="assignment" x="-128" y="40">GEN1_TW = GGIO12345</label><nail x="-144" y="64"/><nail x="48" y="64"/></transition><transition><source ref="id5"/><target ref="id4"/><label kind="synchronisation" x="-96" y="-176">received_msg?</label><label kind="assignment" x="-136" y="-152">GEN2_TW = GGIO12345</label><nail x="-144" y="-152"/><nail x="-144" y="-152"/><nail x="64" y="-152"/></transition><transition><source ref="id5"/><target ref="id4"/><label kind="synchronisation" x="-88" y="-96">received_msg?</label><label kind="assignment" x="-136" y="-120">Q2B_Open_Close=GGIO12346</label><nail x="-112" y="-96"/><nail x="32" y="-96"/></transition></template><system>// Place template instantiations here.
+Process = Template();
+
+// List one or more processes to be composed into a system.
+system Process;</system></nta>
