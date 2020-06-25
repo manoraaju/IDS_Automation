@@ -5,8 +5,8 @@ import lxml.etree
 import re
 from itertools import chain
 
-xml_file = lxml.etree.parse("Uppaal_Load Sharing2.xml")
-#xml_file = lxml.etree.parse("testing.xml")
+#xml_file = lxml.etree.parse("Uppaal_Load Sharing2.xml")
+xml_file = lxml.etree.parse("testing.xml")
 root_xml = xml_file.getroot()
 
 class xml_data():
@@ -59,12 +59,13 @@ class xml_data():
                         temp_dict["post_guard_cond"] = self.process_guard(post_guard_raw)
                         temp_dict["post_assign_check"] = self.process_postcond_assign_tocheck(post_assign_raw)
                         temp_dict["timer_flag"] = True
-                        temp_dict["timer_text"] = "{\n\t\t\ttimer_modbus%s = T;" \
-                                                  "\n\t\t\tschedule timer_period_MODBUS3 " \
-                                                  "{timer_finish_MODBUS%s()};\n\t\t\t}" %(counter,counter)
+                        temp_dict["timer_text"] = "{\n\t\t\t\t\ttimer_modbus%s = T;" \
+                                                  "\n\t\t\t\t\tschedule timer_period_MODBUS3 " \
+                                                  "{timer_finish_MODBUS%s()};\n\t\t\t\t}" %(counter,counter)
                         temp_dict["timer_enable"]= "timer_modbus%s = T"%counter
                         temp_dict["timer_disable"] = "timer_modbus%s = F" % counter
                         temp_dict["timer_enable_check"] = "if(timer_modbus%s == T)" % counter
+                        temp_dict["timer_disable_check"] = "if(timer_modbus%s != T)" % counter
 
                         self.values.append(temp_dict)
 
@@ -100,7 +101,7 @@ class xml_data():
         elem_target = (element.find(".//target")).attrib["ref"]
         finder = (self.node.findall(".//source[@ref='{}']/..".format(elem_target)))
         if len(finder) == 0:
-            print("No targets found!")
+            #print("No targets found!")
             return 0, 0
             # print(self.vector)
         else:
@@ -147,7 +148,7 @@ class xml_data():
     def process_text_tolist(self, txt):
         processing_list = txt
         bool_format_list = ["True", "true", "False", "false"]
-        operator_format_list = '<(?!=)|<=|==|=(?!=)|>(?!=)|>=| and | AND | And | && ,'
+        operator_format_list = '<(?!=)|<=|==|=(?!=)|>(?!=)|>=| and | AND | And | && '
         and_list = ["and", "And", "AND", "&&"]
         # bool_format_list = "[==, !=]*True|true|False|false"
         if processing_list is None or processing_list is "" or processing_list is " ":
@@ -207,6 +208,13 @@ class xml_data():
                     temp_processing_list.append(item)
             except:
                 print("None found")
+
+            try:
+                item = item.strip()
+                find_2sign = re.search("<=|>=|==|<(?!=)|(?<!<)(?<!>)(?<!=)=(?!=)|>(?!=)", item).start()
+            except:
+                temp_processing_list.append(item)
+
         processing_list = " && ".join(temp_processing_list)
         return processing_list
 
@@ -361,6 +369,7 @@ class xml_data():
                     temp_dict["timer_enable"] = dict["timer_enable"]
                     temp_dict["timer_disable"] = dict["timer_disable"]
                     temp_dict["timer_enable_check"] = dict["timer_enable_check"]
+                    temp_dict["timer_disable_check"] = dict["timer_disable_check"]
                     temp_dict["timer_flag"] = dict["timer_flag"]
 
                 if dict["timer_flag"] == False:
@@ -370,14 +379,15 @@ class xml_data():
                     temp_dict["timer_enable"] = ""
                     temp_dict["timer_disable"] = ""
                     temp_dict["timer_enable_check"] = ""
+                    temp_dict["timer_disable_check"] = ""
                     temp_dict["timer_flag"] = dict["timer_flag"]
 
 
             self.MMS_mapping_zeek.append(temp_dict)
 
 
-xml_template_name = "Template"
-#xml_template_name = "SPLC"
+#xml_template_name = "Template"
+xml_template_name = "SPLC"
 processed_xml = xml_data(xml_template_name)
 processed_xml.get_values()
 processed_xml.create_MMS_mapping_zeek()
@@ -388,8 +398,8 @@ def create_event_MMS_read(mapping_dict, update_operation):
     '\n\tif (itemId == %(itemID)s)'
     '\n\t{'
     '\n\t\tif (c$id$orig_h == %(IP_ori)s)'
-    '\n\t\t\t{\n\t\t\t%(Var_1)s = value;'
-    '\n\t\t\t%(post_guard_cond)s'
+    '\n\t\t\t{\n\t\t\t\t%(Var_1)s = value;'
+    '\n\t\t\t\t%(timer_disable_check)s'
     '%(timer_text)s'
     '\n\t\t}'
     '\n\t}')
@@ -397,7 +407,7 @@ def create_event_MMS_read(mapping_dict, update_operation):
     for dict in mapping_dict:
         temp_list.append(loop_text % dict)
     init_text = init_text % ("".join(temp_list), update_operation["update_operation"])
-    print(init_text)
+    #print(init_text)
     return init_text
 
 def create_event_modbus_read_registers(mapping_dict):
@@ -430,7 +440,7 @@ event modbus_write_multiple_registers_request(c: connection, headers: ModbusHead
         if dict["timer_flag"]==True:
             temp_list.append(loop_text % dict)
     init_text = init_text % ("".join(temp_list))
-    print(init_text)
+    #print(init_text)
     return init_text
 
 def create_event_timer_finish(mapping_dict):
@@ -441,6 +451,7 @@ event timer_finish_MODBUS%(counter)s()
     %(timer_enable_check)s
     {
         print "Deletion/Delay alarm";
+        %(timer_disable)s;
     }
 }
 ''')
@@ -449,13 +460,59 @@ event timer_finish_MODBUS%(counter)s()
         if dict["timer_flag"]==True:
             temp_list.append(loop_text % dict)
     init_text = ("".join(temp_list))
-    print(init_text)
+    #print(init_text)
     return init_text
+
+def is_bool(b):
+    b_list = ["True", "TRUE", "true", "False", "FALSE", "false", "T", "F"]
+    try:
+        if b in b_list:
+            return True
+    except:
+        return False
+
+def is_numeric(b):
+    if b.isnumeric():
+        return True
+    else:
+        return False
+
+def is_arithmetic(b):
+    arth = ['+', '-', '*', '/']
+    check = lambda t: True if any(x in t for x in arth) else False
+    return check(b)
+
+def get_global_variables(code):
+    lines = code.split('\n')
+    global_variables = []
+    #print(lines)
+    for line in lines:
+        if ";" in line:
+            line = line.strip(";")
+            line = line.replace(" ", "")
+            line = line.replace("\t", "")
+            if "schedule" in line:
+                reg_ex = re.compile("(?<=schedule).*?(?={)")
+                line = reg_ex.findall(line)[0].replace(" ", "")
+                global_variables.append("global %s = 0.4 secs;" % line)
+            else:
+                line = line.split("=")
+                if len(line)==2 and "local" not in line[0]:
+                    if is_bool(line[1]):
+                        global_variables.append("global %s = F;"%line[0])
+                    else:
+                        global_variables.append("global %s = 0;" % line[0])
+    global_variables = list(dict.fromkeys(global_variables))
+    return "\n".join(global_variables)
 
 
 t1= create_event_MMS_read(processed_xml.MMS_mapping_zeek, processed_xml.MMS_mapping_update)
 t2= create_event_modbus_read_registers(processed_xml.MMS_mapping_zeek)
 t3= create_event_timer_finish(processed_xml.MMS_mapping_zeek)
-
 all_txt = t3 + t1 + t2
+t4 = get_global_variables(all_txt)
+
+all_txt = t4 + t3 + t1 + t2
+print("================================================================")
 print(all_txt)
+print("================================================================")
