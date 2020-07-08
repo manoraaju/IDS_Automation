@@ -53,7 +53,9 @@ class xml_data():
                     if any(map(lambda v: v in pre_assignment_vars, post_guard_vars)):
                         counter = counter + 1
                         temp_dict["name"] = "precond_{}".format(counter)
+
                         temp_dict["counter"] = counter
+                        temp_dict["itemID"] = self.get_itemID(pre_assign_raw)
                         temp_dict["pre_assignment_vars"] = self.process_assign_to_variables(pre_assign_raw)
                         temp_dict["post_assignment_vars"] = self.process_assign_to_variables(post_assign_raw)
                         temp_dict["post_guard_cond"] = self.process_guard(post_guard_raw)
@@ -299,6 +301,14 @@ class xml_data():
         processing_list = [re.split(operator_format_list, var) for var in processing_list]
         return processing_list
 
+    def get_itemID(self, txt):
+        processing_list = txt
+        processing_list = re.sub("\n", "", processing_list)
+        processing_list = re.sub(";", "", processing_list)
+        ## Split by ','
+        processing_list = re.split("=", processing_list)
+        return processing_list[1]
+
     def process_postcond_assign_tocheck(self, txt):
         processing_list = txt
         ## Split by ','
@@ -393,12 +403,32 @@ processed_xml.get_values()
 processed_xml.create_MMS_mapping_zeek()
 
 def create_event_MMS_read(mapping_dict, update_operation):
-    init_text = "\n\nevent MMS_read_request(c: connection, itemId: string, value: bool)\n{%s\n%s\n}"
+    init_text = "\n\nevent read_response(c: connection, invokeID: count, itemID: string, " \
+                "boolean_result: bool)\n{%s\n%s\n}"
     loop_text = (
     '\n\tif (itemId == %(itemID)s)'
     '\n\t{'
     '\n\t\tif (c$id$orig_h == %(IP_ori)s)'
-    '\n\t\t\t{\n\t\t\t\t%(Var_1)s = value;'
+    '\n\t\t\t{\n\t\t\t\t%(name)s = value;'
+    '\n\t\t\t\t%(timer_disable_check)s'
+    '%(timer_text)s'
+    '\n\t\t}'
+    '\n\t}')
+    temp_list = []
+    for dict in mapping_dict:
+        temp_list.append(loop_text % dict)
+    init_text = init_text % ("".join(temp_list), update_operation["update_operation"])
+    #print(init_text)
+    return init_text
+
+def create_event_MMS_write(mapping_dict, update_operation):
+    init_text = "\n\nevent write_request(c: connection, domainID: string, itemID: string, " \
+                "boolean_result: bool)\n{%s\n%s\n}"
+    loop_text = (
+    '\n\tif (itemId == %(itemID)s)'
+    '\n\t{'
+    '\n\t\tif (c$id$orig_h == %(IP_ori)s)'
+    '\n\t\t\t{\n\t\t\t\t%(name)s = value;'
     '\n\t\t\t\t%(timer_disable_check)s'
     '%(timer_text)s'
     '\n\t\t}'
@@ -507,12 +537,13 @@ def get_global_variables(code):
 
 
 t1= create_event_MMS_read(processed_xml.MMS_mapping_zeek, processed_xml.MMS_mapping_update)
-t2= create_event_modbus_read_registers(processed_xml.MMS_mapping_zeek)
-t3= create_event_timer_finish(processed_xml.MMS_mapping_zeek)
-all_txt = t3 + t1 + t2
-t4 = get_global_variables(all_txt)
+t2= create_event_MMS_write(processed_xml.MMS_mapping_zeek, processed_xml.MMS_mapping_update)
+t3= create_event_modbus_read_registers(processed_xml.MMS_mapping_zeek)
+t4= create_event_timer_finish(processed_xml.MMS_mapping_zeek)
+all_txt = t4 + t1 + t2 + t3
+t5 = get_global_variables(all_txt)
 
-all_txt = t4 + t3 + t1 + t2
+all_txt = t5 + t4 + t1 + t2 + t3
 print("================================================================")
 print(all_txt)
 print("================================================================")
