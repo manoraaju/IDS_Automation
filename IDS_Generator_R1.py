@@ -171,35 +171,35 @@ class xml_data():
         counter = 0
         for dict in self.values:
             temp_dict = {}
-            for key in dict:
-                temp_dict["name"] = dict["name"]
-                temp_dict["counter"] = dict["counter"]
-                temp_dict["itemID"] = dict["itemID"]
-                temp_dict["itemID_name"] = dict["itemID_name"]
-                temp_dict["precond_guard"] = dict["precond_guard"]
-                temp_dict["negate_precond_guard"] = dict["negate_precond_guard"]
-                temp_dict["post_assignment_guard"] = dict["post_assignment_guard"]
-                temp_dict["post_assignment"] = dict["post_assignment"]
-                temp_dict["IP_ori"] = ip_dict[counter]["IP_ori"]  ##
-                temp_dict["IP_dst"] = ip_dict[counter]["IP_dst"]  ##
-                if dict["timer_flag"] == True:
-                    temp_dict["timer_text"] = "if (timer_modbus%(counter)s != T) {timer_modbus%(counter)s = T;" \
-                                          "schedule timer_period_MODBUS%(counter)s " \
-                                          "{timer_finish_MODBUS%(counter)s()};}" % (dict)
-                    temp_dict["timer_enable"] = "timer_modbus%(counter)s = T" % dict
-                    temp_dict["timer_disable"] = "timer_modbus%(counter)s = F" % dict
-                    temp_dict["timer_enable_check"] = "if (timer_modbus%(counter)s == T)" % dict
-                    temp_dict["timer_disable_check"] = "if (timer_modbus%(counter)s != T)" % dict
+            temp_dict["name"] = dict["name"]
+            temp_dict["counter"] = dict["counter"]
+            temp_dict["itemID"] = dict["itemID"]
+            temp_dict["itemID_name"] = dict["itemID_name"]
+            temp_dict["precond_guard"] = dict["precond_guard"]
+            temp_dict["negate_precond_guard"] = dict["negate_precond_guard"]
+            temp_dict["post_assignment_guard"] = dict["post_assignment_guard"]
+            temp_dict["post_assignment"] = dict["post_assignment"]
+            print([dict["counter"]-1])
+            temp_dict["IP_ori"] = ip_dict[dict["counter"]-1]["IP_ori"]  ##
+            temp_dict["IP_dst"] = ip_dict[dict["counter"]-1]["IP_dst"]  ##
+            if dict["timer_flag"] == True:
+                temp_dict["timer_text"] = "if (timer_modbus%(counter)s != T) {timer_modbus%(counter)s = T;" \
+                                      "schedule timer_period_MODBUS%(counter)s " \
+                                      "{timer_finish_MODBUS%(counter)s()};}" % (dict)
+                temp_dict["timer_enable"] = "timer_modbus%(counter)s = T" % dict
+                temp_dict["timer_disable"] = "timer_modbus%(counter)s = F" % dict
+                temp_dict["timer_enable_check"] = "if (timer_modbus%(counter)s == T)" % dict
+                temp_dict["timer_disable_check"] = "if (timer_modbus%(counter)s != T)" % dict
 
-                if dict["timer_flag"] == False:
-                    temp_dict["post_guard_cond"] = ""
-                    temp_dict["post_assign_check"] = ""
-                    temp_dict["timer_text"] = ""
-                    temp_dict["timer_enable"] = ""
-                    temp_dict["timer_disable"] = ""
-                    temp_dict["timer_enable_check"] = ""
-                    temp_dict["timer_disable_check"] = ""
-                    temp_dict["timer_flag"] = dict["timer_flag"]
+            if dict["timer_flag"] == False:
+                temp_dict["post_guard_cond"] = ""
+                temp_dict["post_assign_check"] = ""
+                temp_dict["timer_text"] = ""
+                temp_dict["timer_enable"] = ""
+                temp_dict["timer_disable"] = ""
+                temp_dict["timer_enable_check"] = ""
+                temp_dict["timer_disable_check"] = ""
+                temp_dict["timer_flag"] = dict["timer_flag"]
 
 
             self.MMS_mapping_zeek.append(temp_dict)
@@ -215,12 +215,13 @@ def create_event_MMS_read(mapping_dict, update_operation):
     init_text = "event read_response(c: connection, invokeID: count, itemID: string, " \
                 "boolean_result: bool){%s}"
     loop_text = (
-    'if (itemId == %(itemID)s)'
+    'if (itemID == %(itemID)s)'
     '{'
     'if (c$id$orig_h == %(IP_ori)s)'
-    '{%(name)s = value;'
+    '{%(name)s = boolean_result;'
+    '%(precond_guard)s{'
     '%(timer_text)s'
-    '}'
+    '}}'
     '}')
     temp_list = []
     for dict in mapping_dict:
@@ -233,12 +234,13 @@ def create_event_MMS_write(mapping_dict, update_operation):
     init_text = "event write_request(c: connection, domainID: string, itemID: string, " \
                 "boolean_result: bool){%s}"
     loop_text = (
-    'if (itemId == %(itemID)s)'
+    'if (itemID == %(itemID)s)'
     '{'
     'if (c$id$orig_h == %(IP_ori)s)'
-    '{%(name)s = value;'
+    '{%(name)s = boolean_result;'
+    '%(precond_guard)s{'
     '%(timer_text)s'
-    '}'
+    '}}'
     '}')
     temp_list = []
     for dict in mapping_dict:
@@ -249,7 +251,7 @@ def create_event_MMS_write(mapping_dict, update_operation):
 
 def create_event_modbus_read_registers(mapping_dict):
     init_text =("event modbus_write_multiple_registers_request(c: connection, headers: ModbusHeaders, "
-                "start_address: count, registers: ModbusRegisters){%s}")
+                "start_address: count, registers: ModbusRegisters){VSD1_Command_Word2=register[0];%s}")
     loop_text = (
     '%(precond_guard)s'
     "{%(post_assignment_guard)s{%(timer_disable)s;break;}"
@@ -378,18 +380,17 @@ def code_intender(txt):
         new_all_txt3.append("\n".join(temp_line))
     return "\n".join(new_all_txt3)
 
-t1= create_event_MMS_read(processed_xml.MMS_mapping_zeek, processed_xml.MMS_mapping_update)
+t1= create_event_timer_finish(processed_xml.MMS_mapping_zeek)
 t2= create_event_MMS_write(processed_xml.MMS_mapping_zeek, processed_xml.MMS_mapping_update)
-t3= create_event_modbus_read_registers(processed_xml.MMS_mapping_zeek)
-t4= create_event_timer_finish(processed_xml.MMS_mapping_zeek)
-all_txt = t4 + t1 + t2 + t3
-all_txt = code_intender(all_txt)
-print(all_txt)
+t3= create_event_MMS_read(processed_xml.MMS_mapping_zeek, processed_xml.MMS_mapping_update)
+t4= create_event_modbus_read_registers(processed_xml.MMS_mapping_zeek)
 
+all_txt = t1+"\n"+t2+"\n"+t3+"\n"+t4
+all_txt = code_intender(all_txt)
 t5 = get_global_variables(all_txt)
 
 
-all_txt = t5 + all_txt
+all_txt = t5 +"\n"+ all_txt
 print("================================================================")
 print(all_txt)
 print("================================================================")
