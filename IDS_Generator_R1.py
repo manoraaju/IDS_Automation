@@ -143,19 +143,6 @@ class xml_data():
         processing_list = "if (%s)"% processing_list
         return processing_list
 
-    def make_global_vars(self):
-        vars_from_dict = ["pre_assignment_vars", "post_assignment_vars"]
-        for dict in self.values:
-            for key in dict:
-                if key in vars_from_dict:
-                    for item in dict[key]:
-                        self.global_variables.append("global "+item[0]+";")
-        self.global_variables= (list(dict.fromkeys(self.global_variables)))
-        ## Additional global variables set based on number of preconditions
-        no_of_precond = len(self.values)
-        for num in range(no_of_precond):
-            self.global_variables.append("global precond_{}".format(num+1)+";")
-
     def is_bool(self, b):
         b_list = ["True", "TRUE", "true", "False", "FALSE", "false", "T", "F"]
         try:
