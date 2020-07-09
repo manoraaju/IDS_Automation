@@ -319,11 +319,31 @@ def get_global_variables(code):
                 global_variables.append("global %s = 0.4 secs;" % line)
             else:
                 line = line.split("=")
-                if len(line)==2 and "local" not in line[0]:
+                if len(line)==2 and "local" not in line[0] and line[0] not in "".join(global_variables):
                     if is_bool(line[1]):
                         global_variables.append("global %s = F;"%line[0])
                     else:
                         global_variables.append("global %s = 0;" % line[0])
+
+    for line in lines:
+        if "==" in line:
+            line = line.replace(" ", "")
+            if_stmt = line[line.find("(") + 1:line.find(")")]
+            if_stmt = if_stmt.split("==")
+            if is_bool(if_stmt[1]):
+                for cnt in range(len(global_variables)):
+                    if if_stmt[0] in global_variables[cnt]:
+                        global_variables[cnt] = "global %s = F;" % if_stmt[0]
+                    else:
+                        global_variables.append("global %s = F;" % if_stmt[0])
+
+            if is_numeric(if_stmt[1]):
+                for cnt in range(len(global_variables)):
+                    if if_stmt[0] in global_variables[cnt]:
+                        global_variables[cnt] = "global %s = 0;" % if_stmt[0]
+                    else:
+                        global_variables.append("global %s = 0;" % if_stmt[0])
+
     global_variables = list(dict.fromkeys(global_variables))
     return "\n".join(global_variables)
 
@@ -376,13 +396,13 @@ t2= create_event_MMS_write(processed_xml.MMS_mapping_zeek, processed_xml.MMS_map
 t3= create_event_modbus_read_registers(processed_xml.MMS_mapping_zeek)
 t4= create_event_timer_finish(processed_xml.MMS_mapping_zeek)
 all_txt = t4 + t1 + t2 + t3
-print(code_intender(all_txt))
-new_all_txt2.append("\n".join(temp_line))
+all_txt = code_intender(all_txt)
+print(all_txt)
 
 t5 = get_global_variables(all_txt)
 
 
-all_txt = t5 + t4 + t1 + t2 + t3
+all_txt = t5 + all_txt
 print("================================================================")
 print(all_txt)
 print("================================================================")
