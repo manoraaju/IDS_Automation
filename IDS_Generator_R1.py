@@ -215,14 +215,15 @@ def create_event_MMS_read(mapping_dict, update_operation):
     init_text = "event read_response(c: connection, invokeID: count, itemID: string, " \
                 "boolean_result: bool){%s}"
     loop_text = (
-    'if (itemID == %(itemID)s)'
-    '{'
-    'if (c$id$orig_h == %(IP_ori)s)'
-    '{%(name)s = boolean_result;'
-    '%(precond_guard)s{'
-    '%(timer_text)s'
-    '}}'
-    '}')
+        'if (itemID == %(itemID)s)'
+        '{'
+        'if (c$id$orig_h == %(IP_ori)s)'
+        '{'
+        '%(name)s = boolean_result;'
+        '%(precond_guard)s{'
+        '%(timer_text)s'
+        '}}'
+        '}')
     temp_list = []
     for dict in mapping_dict:
         temp_list.append(loop_text % dict)
@@ -234,14 +235,15 @@ def create_event_MMS_write(mapping_dict, update_operation):
     init_text = "event write_request(c: connection, domainID: string, itemID: string, " \
                 "boolean_result: bool){%s}"
     loop_text = (
-    'if (itemID == %(itemID)s)'
-    '{'
-    'if (c$id$orig_h == %(IP_ori)s)'
-    '{%(name)s = boolean_result;'
-    '%(precond_guard)s{'
-    '%(timer_text)s'
-    '}}'
-    '}')
+        'if (itemID == %(itemID)s)'
+        '{'
+        'if (c$id$orig_h == %(IP_ori)s)'
+        '{'
+        '%(name)s = boolean_result;'
+        '%(precond_guard)s{'
+        '%(timer_text)s'
+        '}}'
+        '}')
     temp_list = []
     for dict in mapping_dict:
         temp_list.append(loop_text % dict)
@@ -251,11 +253,23 @@ def create_event_MMS_write(mapping_dict, update_operation):
 
 def create_event_modbus_read_registers(mapping_dict):
     init_text =("event modbus_write_multiple_registers_request(c: connection, headers: ModbusHeaders, "
-                "start_address: count, registers: ModbusRegisters){VSD1_Command_Word2=register[0];%s}")
+                "start_address: count, registers: ModbusRegisters){"
+                "VSD1_Command_Word2=registers[0];"
+                "%s}")
     loop_text = (
     '%(precond_guard)s'
-    "{%(post_assignment_guard)s{%(timer_disable)s;break;}"
-    'print "Modification Alarm for %(itemID_name)s";}')
+    "{"
+    "modbus_inject_counter_%(counter)s=modbus_inject_counter_%(counter)s + 1;"
+    "%(post_assignment_guard)s"
+    "{%(timer_disable)s;"
+    "break;}"		
+	"%(timer_disable)s;"
+	'print "Modification Alarm for %(itemID_name)s";'
+	"}"
+    "if (modbus_inject_counter_%(counter)s > 1){"
+    'print "Modbus injection attack for %(itemID_name)s";'
+	"modbus_inject_counter_%(counter)s = 0;}"
+    )
     temp_list = []
     for dict in mapping_dict:
         temp_list.append(loop_text % dict)
@@ -313,7 +327,7 @@ def get_global_variables(code):
                         global_variables.append("global %s = F;"%line[0])
                     else:
                         global_variables.append("global %s = 0;" % line[0])
-
+    global_variables = list(dict.fromkeys(global_variables))
     for line in lines:
         if "==" in line:
             line = line.replace(" ", "")
@@ -321,17 +335,21 @@ def get_global_variables(code):
             if_stmt = if_stmt.split("==")
             if is_bool(if_stmt[1]):
                 for cnt in range(len(global_variables)):
-                    if if_stmt[0] in global_variables[cnt]:
+                    temp_var =  global_variables[cnt].split("=")[0][7:].strip()
+                    if if_stmt[0] == temp_var:
                         global_variables[cnt] = "global %s = F;" % if_stmt[0]
                     else:
                         global_variables.append("global %s = F;" % if_stmt[0])
+            global_variables = list(dict.fromkeys(global_variables))
 
             if is_numeric(if_stmt[1]):
                 for cnt in range(len(global_variables)):
-                    if if_stmt[0] in global_variables[cnt]:
+                    temp_var =  global_variables[cnt].split("=")[0][7:].strip()
+                    if if_stmt[0] == temp_var:
                         global_variables[cnt] = "global %s = 0;" % if_stmt[0]
                     else:
                         global_variables.append("global %s = 0;" % if_stmt[0])
+            global_variables = list(dict.fromkeys(global_variables))
 
     global_variables = list(dict.fromkeys(global_variables))
     return "\n".join(global_variables)
@@ -392,5 +410,8 @@ t5 = get_global_variables(all_txt)
 
 all_txt = t5 +"\n"+ all_txt
 print("================================================================")
+text_file = open("Output_IDS Bro Code.bro", "w")
+text_file.write(all_txt)
+text_file.close()
 print(all_txt)
 print("================================================================")
